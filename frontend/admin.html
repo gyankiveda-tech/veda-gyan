@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VEDA ADMIN | Control Center</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;500;700&family=Syncopate:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --dark-bg: #050505;
+            --glass: rgba(20, 20, 30, 0.8);
+        }
+        body { 
+            font-family: 'Rajdhani', sans-serif; 
+            background: var(--dark-bg);
+            color: #e2e8f0;
+        }
+        .tech-font { font-family: 'Syncopate', sans-serif; }
+        .admin-card {
+            background: var(--glass);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            backdrop-filter: blur(10px);
+        }
+    </style>
+</head>
+<body class="min-h-screen p-6">
+
+    <header class="max-w-6xl mx-auto flex justify-between items-center mb-10 border-b border-white/10 pb-6">
+        <div>
+            <h1 class="tech-font text-2xl font-bold text-white tracking-tighter">
+                SYSTEM<span class="text-indigo-500">ADMIN</span>
+            </h1>
+            <p class="text-[10px] text-gray-500 font-mono tracking-[3px] uppercase">Veda Verse Control Panel</p>
+        </div>
+        <div class="flex gap-4">
+            <div class="bg-indigo-500/10 px-4 py-2 rounded-lg border border-indigo-500/30">
+                <p class="text-[9px] text-gray-400 uppercase font-bold">Total Revenue</p>
+                <p id="totalShagunDisplay" class="text-lg font-bold text-indigo-400">₹0</p>
+            </div>
+            <button onclick="location.href='index.html'" class="bg-white/5 hover:bg-white/10 px-4 py-2 rounded-lg text-xs font-bold transition-all border border-white/10">VIEW SITE</button>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        <section class="lg:col-span-2 space-y-6">
+            <div class="flex justify-between items-center">
+                <h2 class="tech-font text-sm text-indigo-400 tracking-widest uppercase">Payment Logs & Honor Wall</h2>
+                <button onclick="fetchEntries()" class="text-[10px] bg-white/5 px-2 py-1 rounded border border-white/10 hover:bg-indigo-500 transition-all uppercase">Sync Data</button>
+            </div>
+            
+            <div class="admin-card rounded-3xl overflow-hidden">
+                <table class="w-full text-left">
+                    <thead class="bg-white/5 text-[10px] uppercase tracking-widest text-gray-400">
+                        <tr>
+                            <th class="p-4">User Alias</th>
+                            <th class="p-4">Txn ID Details</th>
+                            <th class="p-4">Amount</th>
+                            <th class="p-4">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="adminTableBody" class="text-sm">
+                        </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="space-y-6">
+            <h2 class="tech-font text-sm text-indigo-400 tracking-widest uppercase">Manual Injection</h2>
+            <div class="admin-card p-6 rounded-3xl space-y-4">
+                <div>
+                    <label class="text-[10px] font-bold text-gray-500 block mb-2 uppercase">Donor Name</label>
+                    <input type="text" id="manualName" placeholder="ENTER NAME..." class="w-full bg-black/40 border border-white/10 p-3 rounded-xl text-sm focus:outline-none focus:border-indigo-500 text-white">
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-gray-500 block mb-2 uppercase">Amount (INR)</label>
+                    <input type="number" id="manualAmount" placeholder="ENTER AMOUNT..." class="w-full bg-black/40 border border-white/10 p-3 rounded-xl text-sm focus:outline-none focus:border-indigo-500 text-white">
+                </div>
+                <button onclick="addManualEntry()" class="w-full bg-indigo-600 hover:bg-indigo-500 py-4 rounded-xl text-[10px] font-bold tracking-[0.2em] uppercase transition-all shadow-[0_0_15px_rgba(99,102,241,0.3)]">
+                    Push to Wall
+                </button>
+            </div>
+
+            <div class="admin-card p-6 rounded-3xl">
+                <h3 class="text-[10px] font-bold text-gray-500 uppercase mb-4 tracking-widest">System Health</h3>
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs text-gray-300 italic uppercase">Neural Link:</span>
+                        <span id="serverStatus" class="text-[10px] text-red-400 font-bold uppercase font-mono animate-pulse">Offline</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs text-gray-300 italic uppercase">JSON Storage:</span>
+                        <span class="text-[10px] text-green-400 font-bold uppercase font-mono">Active</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const API_URL = "http://localhost:8000";
+
+        window.onload = () => {
+            fetchEntries();
+            checkServerStatus();
+        };
+
+        async function checkServerStatus() {
+            try {
+                const res = await fetch(`${API_URL}/`);
+                if(res.ok) {
+                    const statusEl = document.getElementById('serverStatus');
+                    statusEl.innerText = "Online";
+                    statusEl.classList.replace('text-red-400', 'text-green-400');
+                    statusEl.classList.remove('animate-pulse');
+                }
+            } catch (err) { console.log("Server unreachable"); }
+        }
+
+        async function fetchEntries() {
+            try {
+                const res = await fetch(`${API_URL}/get-honor-wall`);
+                const data = await res.json();
+                const tableBody = document.getElementById('adminTableBody');
+                const totalDisplay = document.getElementById('totalShagunDisplay');
+                
+                let total = 0;
+                tableBody.innerHTML = '';
+
+                data.reverse().forEach(entry => { // Latest entries first
+                    total += parseInt(entry.amount || 0);
+                    tableBody.innerHTML += `
+                        <tr class="border-t border-white/5 hover:bg-white/5 transition-all">
+                            <td class="p-4">
+                                <p class="font-bold text-white uppercase tracking-wider">${entry.name}</p>
+                            </td>
+                            <td class="p-4">
+                                <p class="font-mono text-[11px] text-indigo-300 bg-indigo-500/10 px-2 py-1 rounded inline-block">
+                                    ${entry.txn_id || 'MANUAL_ENTRY'}
+                                </p>
+                            </td>
+                            <td class="p-4 font-bold text-green-400">₹${entry.amount}</td>
+                            <td class="p-4">
+                                <span class="text-[9px] text-white/50 font-bold uppercase">Stored</span>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                totalDisplay.innerText = `₹${total}`;
+            } catch (err) {
+                console.error("Fetch error:", err);
+            }
+        }
+
+        async function addManualEntry() {
+            const name = document.getElementById('manualName').value.trim();
+            const amount = document.getElementById('manualAmount').value.trim();
+
+            if(!name || !amount) {
+                alert("⚠️ Error: Name and Amount are mandatory!");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('name', name);
+            formData.append('amount', amount);
+            formData.append('txn_id', 'ADMIN_MANUAL_' + Math.floor(Math.random() * 1000));
+
+            try {
+                const response = await fetch(`${API_URL}/add-honor`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if(response.ok) {
+                    document.getElementById('manualName').value = '';
+                    document.getElementById('manualAmount').value = '';
+                    fetchEntries(); 
+                }
+            } catch (err) {
+                alert("❌ Connection to Backend Failed!");
+            }
+        }
+    </script>
+</body>
+</html>

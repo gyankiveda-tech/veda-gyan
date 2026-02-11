@@ -1,0 +1,8 @@
+[
+    {
+        "name": "TEST USER",
+        "amount": "500",
+        "txn_id": "MANUAL",
+        "status": "APPROVED"
+    }
+]
