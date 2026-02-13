@@ -316,7 +316,8 @@
             if (bgImageFile) formData.append('bg_image', bgImageFile);
 
             try {
-                const response = await fetch('http://localhost:8000/remove-bg', { method: 'POST', body: formData });
+                // UPDATE: Changed localhost to Render URL
+                const response = await fetch('https://veda-gyan.onrender.com/remove-bg', { method: 'POST', body: formData });
                 if (!response.ok) throw new Error('Server Down');
                 const blob = await response.blob();
                 const url = URL.createObjectURL(blob);
