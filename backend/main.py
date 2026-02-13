@@ -10,17 +10,17 @@ from processor import BackgroundRemover
 
 app = FastAPI(title="VEDA VERSE | Neural Engine & Shagun System")
 
-# --- CORS Setup ---
+# --- CORS Setup (Updated for Vercel/Render Connection) ---
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # Sabhi origins allow hain
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],  # GET, POST, OPTIONS sab allow hain
+    allow_headers=["*"],  # Sabhi headers allow hain
+    expose_headers=["*"]  # Frontend ko headers read karne ki permission
 )
 
 # --- Files & Database Setup ---
-# ध्यान दें: Render पर फाइलें सेव नहीं रहतीं, हर रीस्टार्ट पर खाली हो जाएंगी।
 DB_FILE = "/opt/render/project/src/honor_wall.json" if os.path.exists("/opt/render/project/src/") else "honor_wall.json"
 
 def initialize_db():
@@ -32,7 +32,6 @@ initialize_db()
 
 # --- Initialize AI Engine ---
 try:
-    # हमने processor.py में जो सुधार किए थे, यह उसे लोड करेगा
     remover = BackgroundRemover()
 except Exception as e:
     print(f"⚠️ Warning: Could not initialize AI engine: {e}")
@@ -47,7 +46,7 @@ def home():
         "db_status": "Connected"
     }
 
-# --- 1. IMAGE PROCESSING ENDPOINT (लॉजिक वही है, कोई बदलाव नहीं) ---
+# --- 1. IMAGE PROCESSING ENDPOINT ---
 @app.post("/remove-bg")
 async def remove_background(
     file: UploadFile = File(...),
@@ -90,7 +89,12 @@ async def remove_background(
         processed_image.save(img_byte_arr, format='PNG', optimize=True, quality=100)
         img_byte_arr.seek(0)
         
-        return StreamingResponse(img_byte_arr, media_type="image/png")
+        # Header add kiya taaki CORS issue na aaye image stream mein
+        return StreamingResponse(
+            img_byte_arr, 
+            media_type="image/png",
+            headers={"Access-Control-Allow-Origin": "*"}
+        )
 
     except Exception as e:
         print(f"❌ Engine Failure: {str(e)}")
@@ -143,7 +147,5 @@ async def add_honor(
 
 # --- RENDER PORT FIX ---
 if __name__ == "__main__":
-    # Render $PORT एनवायरनमेंट वेरिएबल का उपयोग करता है
     port = int(os.environ.get("PORT", 8000))
-    # प्रोडक्शन में reload=True हटाना बेहतर है ताकि RAM कम खर्च हो
     uvicorn.run("main:app", host="0.0.0.0", port=port)
