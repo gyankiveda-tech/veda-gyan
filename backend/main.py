@@ -10,7 +10,7 @@ from processor import BackgroundRemover
 
 app = FastAPI(title="VEDA VERSE | Neural Engine & Shagun System")
 
-# --- CORS Setup (ताकि Frontend Backend से बात कर सके) ---
+# --- CORS Setup ---
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -20,7 +20,8 @@ app.add_middleware(
 )
 
 # --- Files & Database Setup ---
-DB_FILE = "honor_wall.json"
+# ध्यान दें: Render पर फाइलें सेव नहीं रहतीं, हर रीस्टार्ट पर खाली हो जाएंगी।
+DB_FILE = "/opt/render/project/src/honor_wall.json" if os.path.exists("/opt/render/project/src/") else "honor_wall.json"
 
 def initialize_db():
     if not os.path.exists(DB_FILE):
@@ -31,6 +32,7 @@ initialize_db()
 
 # --- Initialize AI Engine ---
 try:
+    # हमने processor.py में जो सुधार किए थे, यह उसे लोड करेगा
     remover = BackgroundRemover()
 except Exception as e:
     print(f"⚠️ Warning: Could not initialize AI engine: {e}")
@@ -41,10 +43,11 @@ def home():
     return {
         "status": "Online",
         "engine": "Veda Verse Neural Engine 🚀",
+        "python_version": "3.11.9",
         "db_status": "Connected"
     }
 
-# --- 1. IMAGE PROCESSING ENDPOINT ---
+# --- 1. IMAGE PROCESSING ENDPOINT (लॉजिक वही है, कोई बदलाव नहीं) ---
 @app.post("/remove-bg")
 async def remove_background(
     file: UploadFile = File(...),
@@ -69,7 +72,6 @@ async def remove_background(
         if bg_image:
             bg_image_bytes = await bg_image.read()
         
-        # मास्टर न्यूरल लॉजिक - processor.py से कॉल हो रहा है
         processed_image = remover.process(
             image_bytes=contents,
             bg_color=bg_color,
@@ -82,10 +84,8 @@ async def remove_background(
             upscale=upscale
         )
         
-        # HD Cleanup
         processed_image = remover.apply_hd_cleanup(processed_image)
         
-        # इमेज को बाइट्स में बदलें ताकि यूजर को वापस भेज सकें
         img_byte_arr = io.BytesIO()
         processed_image.save(img_byte_arr, format='PNG', optimize=True, quality=100)
         img_byte_arr.seek(0)
@@ -115,7 +115,6 @@ async def add_honor(
     txn_id: Optional[str] = Form("MANUAL")
 ):
     try:
-        # डेटा लोड करना
         data = []
         if os.path.exists(DB_FILE):
             with open(DB_FILE, "r") as f:
@@ -124,7 +123,6 @@ async def add_honor(
                 except json.JSONDecodeError:
                     data = []
         
-        # न्यू एंट्री तैयार करना
         new_entry = {
             "name": name.strip().upper(),
             "amount": amount,
@@ -133,10 +131,8 @@ async def add_honor(
             "timestamp": os.path.getmtime(DB_FILE) if os.path.exists(DB_FILE) else 0
         }
         
-        # डेटा को लिस्ट के शुरू में जोड़ना ताकि लेटेस्ट पहले दिखे
         data.insert(0, new_entry)
         
-        # सुरक्षित रूप से सेव करना
         with open(DB_FILE, "w") as f:
             json.dump(data, f, indent=4)
             
@@ -145,6 +141,9 @@ async def add_honor(
         print(f"❌ DB Write Error: {e}")
         return {"status": "error", "message": "Failed to save data"}
 
+# --- RENDER PORT FIX ---
 if __name__ == "__main__":
-    # Reload=True सिर्फ़ डेवलपमेंट के लिए है
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    # Render $PORT एनवायरनमेंट वेरिएबल का उपयोग करता है
+    port = int(os.environ.get("PORT", 8000))
+    # प्रोडक्शन में reload=True हटाना बेहतर है ताकि RAM कम खर्च हो
+    uvicorn.run("main:app", host="0.0.0.0", port=port)

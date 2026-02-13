@@ -1,9 +1,12 @@
 /**
  * VEDA VERSE - Core Logic Engine
  * Architect: Gyan Vardhan
+ * Production Version: 1.0.1 (Connected to Render)
  */
 
-const API_URL = "http://localhost:8000";
+// --- Backend API Configuration ---
+// हमने आपके लोकलहोस्ट को हटाकर लाइव रेंडर लिंक डाल दिया है
+const API_URL = "https://veda-gyan.onrender.com";
 
 // --- 1. Identity Management ---
 function saveUserIdentity() {
@@ -52,8 +55,7 @@ function setShagun(amount) {
     const name = "GyanVardhan";
     
     /**
-     * UPDATED: UPI Deep Link for Amount Lock
-     * am=${amount} Google Pay/PhonePe में अमाउंट को फिक्स कर देता है।
+     * UPI Deep Link for Amount Lock
      */
     const upiLink = `upi://pay?pa=${upiID}&pn=${encodeURIComponent(name)}&am=${amount}&cu=INR&tn=VEDA_VERSE_SHAGUN`;
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiLink)}`;
@@ -78,13 +80,12 @@ async function verifyTxn() {
         return;
     }
 
-    // Amount चेक करें (कम से कम 1 होना चाहिए)
     const finalAmount = currentSelectedAmount || "51";
 
     const formData = new FormData();
     formData.append('name', userAlias);
     formData.append('amount', finalAmount); 
-    formData.append('txn_id', txnId); // पक्का करें कि यह Admin को जा रहा है
+    formData.append('txn_id', txnId);
 
     try {
         const response = await fetch(`${API_URL}/add-honor`, {
@@ -93,16 +94,16 @@ async function verifyTxn() {
         });
 
         if (response.ok) {
-            alert(`✅ SENT: Request for Txn ID ${txnId} has been sent to Admin for verification.`);
-            txnIdInput.value = ''; // Input साफ़ करें
+            alert(`✅ SENT: Request for Txn ID ${txnId} has been sent for verification.`);
+            txnIdInput.value = '';
             closePaymentModal();
-            loadHonorWall(); // वेबसाइट लिस्ट रिफ्रेश करें
+            loadHonorWall(); 
         } else {
-            alert("❌ Server rejected the request. Please check if Python is running.");
+            alert("❌ Server rejected the request. It might be waking up, please try again in a minute.");
         }
     } catch (error) {
         console.error("Verification Error:", error);
-        alert("❌ CONNECTION FAILED: Make sure your Python server is running on localhost:8000");
+        alert("❌ CONNECTION FAILED: Cloud server is taking too long to respond.");
     }
 }
 
@@ -115,7 +116,7 @@ async function loadHonorWall() {
         const wall = document.getElementById('leaderboard'); 
         if(!wall) return;
 
-        wall.innerHTML = ''; // पुराने स्टैटिक नाम साफ़ करें
+        wall.innerHTML = ''; 
 
         if (data.length === 0) {
             wall.innerHTML = '<p class="text-[10px] text-gray-500 italic text-center w-full">No legends yet.</p>';
@@ -123,7 +124,6 @@ async function loadHonorWall() {
         }
 
         data.forEach(user => {
-            // Transaction ID सिर्फ एडमिन को दिखे, यहाँ सिर्फ नाम और अमाउंट दिखेगा
             wall.innerHTML += `
                 <div class="flex justify-between items-center bg-indigo-500/10 p-2 rounded-lg border border-indigo-500/20">
                     <span class="text-[10px] font-bold text-white uppercase">${user.name}</span>
@@ -219,7 +219,7 @@ async function handleUpload() {
             body: formData
         });
 
-        if (!response.ok) throw new Error('Backend Offline');
+        if (!response.ok) throw new Error('Neural Engine Offline');
 
         const blob = await response.blob();
         const finalUrl = URL.createObjectURL(blob);
@@ -231,7 +231,7 @@ async function handleUpload() {
 
     } catch (error) {
         console.error(error);
-        alert("❌ NEURAL LINK FAILED: Check your Python server on port 8000.");
+        alert("❌ VEDA NEURAL LINK ERROR: The cloud engine is taking too long to wake up. Please wait 30 seconds and try again.");
     } finally {
         loading.classList.add('hidden');
         scanner.classList.add('hidden');
